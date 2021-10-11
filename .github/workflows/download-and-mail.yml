@@ -29,3 +29,10 @@ jobs:
       run: poetry install --no-dev
     - name: Build
       run: poetry run python -m m2m.run
+      env:
+        M2M_MEDIAPART_LOGIN: ${{ secrets.M2M_MEDIAPART_LOGIN }}
+        M2M_MEDIAPART_PASSWORD: ${{ secrets.M2M_MEDIAPART_PASSWORD }}
+        M2M_SMTP_SERVER_HOST: ${{ secrets.M2M_SMTP_SERVER_HOST }}
+        M2M_SMTP_FROM_EMAIL: ${{ secrets.M2M_SMTP_FROM_EMAIL }}
+        M2M_SMTP_PASSWORD: ${{ secrets.M2M_SMTP_PASSWORD }}
+        M2M_SMTP_TO_EMAIL: ${{ secrets.M2M_SMTP_TO_EMAIL }}
