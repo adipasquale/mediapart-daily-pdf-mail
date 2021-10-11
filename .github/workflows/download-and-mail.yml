@@ -1,4 +1,4 @@
-name: Build Bulletins Schedule
+name: Download and Mail
 
 on:
   workflow_dispatch:
