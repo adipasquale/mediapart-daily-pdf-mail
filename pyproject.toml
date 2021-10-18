@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "mediapart-daily-pdf-mail"
+name = "mediapart-daily-pdf-to-remarkable"
 version = "0.1.0"
-description = "Fetches a PDF of the newspaper Mediapart and mails it"
+description = "Fetches a PDF of the newspaper Mediapart and uploads it to the ReMarkable cloud"
 authors = ["Adrien Di Pasquale <adrien@dipasquale.fr>"]
 license = "MIT"
 
@@ -9,6 +9,7 @@ license = "MIT"
 python = "^3.9"
 requests = "^2.26.0"
 lxml = "^4.6.3"
+rmapy = "^0.3.1"
 
 [tool.poetry.dev-dependencies]
 

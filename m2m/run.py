@@ -1,16 +1,15 @@
 import requests
 from lxml.html import fromstring
 from datetime import datetime, timezone, timedelta
-from email import encoders
-from email.mime.base import MIMEBase
-from email.mime.multipart import MIMEMultipart
-import smtplib
 import os
+from rmapy.api import Client
+from rmapy.document import ZipDocument
 
+# UTC+2 = Paris timezone
 YESTERDAY = datetime.now(timezone(timedelta(hours=+2))) - timedelta(days=1)
 
 def validate_environment_variables():
-    for key in ["M2M_MEDIAPART_LOGIN", "M2M_MEDIAPART_PASSWORD", "M2M_SMTP_SERVER_HOST", "M2M_SMTP_FROM_EMAIL", "M2M_SMTP_PASSWORD", "M2M_SMTP_TO_EMAIL"]:
+    for key in ["M2M_MEDIAPART_LOGIN", "M2M_MEDIAPART_PASSWORD", "M2M_REMARKABLE_DEVICE_TOKEN"]:
         if not os.environ.get(key):
             print(f"missing env variable {key}, aborting")
             return False
@@ -48,33 +47,24 @@ def get_yesterday_pdf_url(session):
 def download_pdf(session, pdf_url):
     print(f"downloading file {pdf_url}...")
     req = session.get(pdf_url, allow_redirects=True)
+    filename = f"Mediapart-{YESTERDAY.strftime('%d-%m-%Y')}.pdf"
+    with open(filename, "wb") as f:
+        f.write(req.content)
     print("  downloaded!")
-    return req.content
+    return filename
 
-# method inspired by https://alexwlchan.net/2016/05/python-smtplib-and-fastmail/
-def send_mail(pdf_content):
-    print("logging to SMTP...")
-    smtp = smtplib.SMTP_SSL(os.environ["M2M_SMTP_SERVER_HOST"], port=465)
-    smtp.login(os.environ["M2M_SMTP_FROM_EMAIL"], os.environ["M2M_SMTP_PASSWORD"])
-    msg_root = MIMEMultipart()
-    msg_root['Subject'] = f"Journal Mediapart {YESTERDAY.strftime('%d/%m/%Y')}"
-    msg_root['From'] = os.environ["M2M_SMTP_FROM_EMAIL"]
-    msg_root['To'] = os.environ["M2M_SMTP_TO_EMAIL"]
-    msg_alternative = MIMEMultipart('alternative')
-    msg_root.attach(msg_alternative)
-    prt = MIMEBase('application', "octet-stream")
-    prt.set_payload(pdf_content)
-    encoders.encode_base64(prt)
-    filename = "mediapart_%s.pdf" % YESTERDAY.strftime('%d/%m/%Y')
-    prt.add_header('Content-Disposition', 'attachment; filename="%s"' % (filename, ))
-    msg_root.attach(prt)
-    print("Sending mail with PDF attached...")
-    smtp.sendmail(
-        os.environ["M2M_SMTP_FROM_EMAIL"],
-        os.environ["M2M_SMTP_TO_EMAIL"],
-        msg_root.as_string()
-    )
-    print("  sent!")
+def send_to_rm(pdf_filename):
+    rmapy = Client()
+    rmapy.token_set["devicetoken"] = os.environ["M2M_REMARKABLE_DEVICE_TOKEN"]
+    rmapy.renew_token()
+    if not rmapy.is_auth():
+        print("⚠️ could not auth to ReMarkable")
+        exit(1)
+    raw_document = ZipDocument(doc=pdf_filename)
+    if not rmapy.upload(raw_document):
+        print("⚠️ could not upload to ReMarkable")
+        exit(1)
+    print("uploaded to ReMarkable!")
 
 if __name__ == "__main__":
     if not validate_environment_variables():
@@ -83,5 +73,5 @@ if __name__ == "__main__":
     pdf_url = get_yesterday_pdf_url(session)
     if not pdf_url:
         exit(1)
-    pdf_content = download_pdf(session, pdf_url)
-    send_mail(pdf_content)
+    pdf_filename = download_pdf(session, pdf_url)
+    send_to_rm(pdf_filename)
